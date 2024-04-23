@@ -1,143 +1,37 @@
-import base64
-
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives.asymmetric import rsa
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.asymmetric import padding
+from AESDES import *
+from RSA import *
+from Crypto.Random import get_random_bytes
 
 
-def GenerateCommunicationKeys():
-    private_key = rsa.generate_private_key(
-        public_exponent=65537,
-        key_size=2048
-    )
-    public_key = private_key.public_key()
-    return public_key,private_key
-
-def SerializePublicKey(publicKey):
-    publicKeyPemSerialized = publicKey.public_bytes(
-        encoding=serialization.Encoding.PEM,
-        format=serialization.PublicFormat.SubjectPublicKeyInfo
-    )
-    return publicKeyPemSerialized
-
-def SerializePrivKey(private_key):
-    PrivKeyPemSerialized = private_key.private_bytes(
-        encoding=serialization.Encoding.PEM,
-        format=serialization.PrivateFormat.TraditionalOpenSSL,
-        encryption_algorithm=serialization.NoEncryption()
-    )
-    return PrivKeyPemSerialized
-
-def RSAEncrypt(plaintext, serializedPublicKey):
-    publicKey = serialization.load_pem_public_key(
-        serializedPublicKey,
-        backend=default_backend()
-    )
-    ciphertext = publicKey.encrypt(
-        plaintext,
-        padding.OAEP(
-            mgf=padding.MGF1(algorithm=hashes.SHA256()),
-            algorithm=hashes.SHA256(),
-            label=None
-        )
-    )
-    return ciphertext
-
-def RSADecript(ciphertext, serialized_private_key):
-
-    loaded_private_key = serialization.load_pem_private_key(
-        serialized_private_key,
-        password=None,
-        backend=default_backend()
-    )
-
-    # Decrypt the data
-    decrypted_data = loaded_private_key.decrypt(
-        ciphertext,
-        padding.OAEP(
-            mgf=padding.MGF1(algorithm=hashes.SHA256()),
-            algorithm=hashes.SHA256(),
-            label=None
-        )
-    )
-
-    return decrypted_data
-
-def hash_data(data):
-    digest = hashes.Hash(hashes.SHA256(), backend=default_backend())
-    digest.update(data)
-    return digest.finalize()
-
-def create_signature(plaintext, serialized_private_key):
-
-    loaded_private_key = serialization.load_pem_private_key(
-        serialized_private_key,
-        password=None,
-        backend=default_backend()
-    )
-
-    hashed = hash_data(plaintext)
-
-    signature = loaded_private_key.sign(
-        hashed,
-        padding.PSS(
-            mgf=padding.MGF1(hashes.SHA256()),
-            salt_length=padding.PSS.MAX_LENGTH
-        ),
-        hashes.SHA256()
-    )
-    return signature
-
-def verify_signature(plaintext, signature, serialized_public_key):
-
-    loaded_public_key = serialization.load_pem_public_key(
-        serialized_public_key,
-        backend=default_backend()
-    )
-
-    hashed = hash_data(plaintext)
-
-    try:
-        loaded_public_key.verify(
-            signature,
-            hashed,
-            padding.PSS(
-                mgf=padding.MGF1(hashes.SHA256()),
-                salt_length=padding.PSS.MAX_LENGTH
-            ),
-            hashes.SHA256()
-        )
-        # print("Verification Valid!")
-        return True
-    except:
-        # print("Verification Failed")
-        return False
 
 if __name__ == '__main__':
-    # Example Usage
-    public_key, private_key = GenerateCommunicationKeys()
-    plaintext = b"Hello, secure email communication!"
+    # symmetric key for main communication (block cipher encrypted)
+    symmetric_key = get_random_bytes(16)
+    print(f"This is the symmetric key: {symmetric_key} before encryption")
 
+    RSAEncryption = RSA()
+    # asymmetric keys created for securely sharing symmetric key
+    user1_public_key, user1_private_key = RSAEncryption.GenerateCommunicationKeys()
+    user2_public_key, user2_private_key = RSAEncryption.GenerateCommunicationKeys()
 
-    # Hashing (SHA-256)
-    hashed_data = hash_data(plaintext)
+    # encryption of symmetric key (user1 shares symmetric key with user2)
+    encrypted_symmetric_key = RSAEncryption.RSAEncrypt(symmetric_key, RSAEncryption.SerializePublicKey(user2_public_key))
+    print("Encrypted with Public:", encrypted_symmetric_key)
 
-    # Pub Encrypt
-    ciphertext = RSAEncrypt(plaintext, SerializePublicKey(public_key))
-    print("Encrypted with Public:", ciphertext)
+    # decryption of symmetric key (user2 decrypts the encrypted shared symmetric key sent from user1)
+    decrypted_symmetric_key = RSAEncryption.RSADecrypt(encrypted_symmetric_key,RSAEncryption.SerializePrivKey(user2_private_key))
+    print("Decrypted with Public:", decrypted_symmetric_key)
 
-    # Priv Decription
-    DecriptedText = RSADecript(ciphertext, SerializePrivKey(private_key))
-    print("Decrypted with Private:", DecriptedText)
+    print("\n")
+    # plaintext message to be sent
+    message = b"Hello user2"
 
-    # Digital Signature
-    signature = create_signature(plaintext, SerializePrivKey(private_key))
-    verify_signature(plaintext, signature, SerializePublicKey(public_key))
+    # using AES block encryption to encrypt the data
+    MyBlockCipher = BlockCipher()
+    ciphertext, tag, nonce = MyBlockCipher.encrypt_AES_EAX(message, decrypted_symmetric_key)
+    print("AES EAX Ciphertext:", ciphertext)
 
+    # using AES block decryption to encrypt the data
+    plaintext = MyBlockCipher.decrypt_AES_EAX(ciphertext, decrypted_symmetric_key, nonce, tag)
+    print("AES EAX Plaintext:", plaintext)
 
-    # Base64 Encoding for display
-    print("Plaintext:", plaintext.decode())
-    print("Hashed Data:", base64.b64encode(hashed_data).decode())
-    print("Signature:", base64.b64encode(signature).decode())
