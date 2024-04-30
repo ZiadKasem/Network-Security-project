@@ -1,25 +1,30 @@
 from tinyec import registry
 import secrets
 
-def compress(pubKey):
-    return hex(pubKey.x) + hex(pubKey.y % 2)[2:]
+class ECC:
+    def __init__(self):
+        self.curve = registry.get_curve('brainpoolP256r1')
+        pass
+    def compress(self,pubKey):
+        return hex(pubKey.x) + hex(pubKey.y % 2)[2:]
 
-curve = registry.get_curve('brainpoolP256r1')
+    def generateKeys(self):
 
-alicePrivKey = secrets.randbelow(curve.field.n)
-alicePubKey = alicePrivKey * curve.g
-print("Alice public key:", compress(alicePubKey))
+        user1PrivKey = secrets.randbelow(self.curve.field.n)
+        user1PubKey = user1PrivKey * self.curve.g
+        print("User 1 public key:", self.compress(user1PubKey))
 
-bobPrivKey = secrets.randbelow(curve.field.n)
-bobPubKey = bobPrivKey * curve.g
-print("Bob public key:", compress(bobPubKey))
+        user2PrivKey = secrets.randbelow(self.curve.field.n)
+        user2PubKey = user2PrivKey * self.curve.g
+        print("Bob public key:", self.compress(user2PubKey))
 
-print("Now exchange the public keys (e.g. through Internet)")
+        print("Now exchange the public keys (e.g. through Internet)")
 
-aliceSharedKey = alicePrivKey * bobPubKey
-print("Alice shared key:", compress(aliceSharedKey))
+        user1SharedKey = user1PrivKey * user2PubKey
+        print("Alice shared key:", self.compress(user1SharedKey))
 
-bobSharedKey = bobPrivKey * alicePubKey
-print("Bob shared key:", compress(bobSharedKey))
+        user2SharedKey = user2PrivKey * user1PubKey
+        print("Bob shared key:", self.compress(user2SharedKey))
 
-print("Equal shared keys:", aliceSharedKey == bobSharedKey)
+        print("Equal shared keys:", user1SharedKey == user2SharedKey)
+        return user1PrivKey,user1PubKey,user1SharedKey, user2PrivKey, user2PubKey, user2SharedKey
