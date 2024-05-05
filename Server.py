@@ -15,21 +15,25 @@ connected_clients = 0
 # Event to signal the server to stop
 stop_server_event = threading.Event()
 
-# Function to handle incoming messages from clients
+# Modify the handle_client function to send an update message when a new client connects
+# Modify the handle_client function to send an update message when a new client connects
 def handle_client(client_socket, client_address):
-    global blockCipherSelected, encryptionSelected,connected_clients
+    global blockCipherSelected, encryptionSelected, connected_clients
 
     try:
-        connected_clients +=1
+        connected_clients += 1
         # Receive username from client
         username = client_socket.recv(1024).decode('utf-8')
-        client_socket.send(f"{blockCipherSelected}:{encryptionSelected:{connected_clients}}".encode('utf-8'))
+        client_socket.send(f"{blockCipherSelected}:{encryptionSelected}:{connected_clients}".encode('utf-8'))
 
         # Prompt client for username
         print(f"Username '{username}' connected from {client_address}")
 
         # Add client address to connected clients list
         update_connected_clients(f"{username} - {client_address}")
+
+        # Broadcast an update message to all clients
+        broadcast(f"New client connected: {username}", client_socket)
 
         while not stop_server_event.is_set():
             # Receive message from client
@@ -38,9 +42,8 @@ def handle_client(client_socket, client_address):
                 print(f"Connection with {client_address} closed.")
                 break
 
-
-            broadcast(message,client_socket)
-
+            # Broadcast message to all clients
+            broadcast(message, client_socket)
 
     except Exception as e:
         print(f"Error: {e}")
@@ -50,13 +53,14 @@ def handle_client(client_socket, client_address):
     connected_clients -= 1
     client_socket.close()
 
-
-# Function to broadcast messages to all clients
-def broadcast(message,clientSocket):
+# Function to broadcast messages to all clients including the number of connected clients
+def broadcast(message, clientSocket):
+    num_clients = len(clients)
     for client in clients:
         try:
-            if (client != clientSocket):
-                client.send(f"{message}".encode('utf-8'))
+
+            # Send message along with the number of connected clients
+            client.send(f"{message}|{num_clients}".encode('utf-8'))
         except:
             clients.remove(client)
 

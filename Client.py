@@ -44,6 +44,10 @@ class ChatApp(QWidget):
 
         self.layout.addLayout(self.entry_layout)
 
+        # Add QLabel to display number of connected clients
+        self.connected_clients_label = QLabel("Connected Clients: 0")
+        self.layout.addWidget(self.connected_clients_label)
+
     def connect_to_server(self):
         global blockCipherSelected, encryptionSelected
         self.username = self.username_entry.text()
@@ -85,8 +89,11 @@ class ChatApp(QWidget):
     def receive_message(self):
         while True:
             try:
-                message = self.client_socket.recv(1024).decode()
+                data = self.client_socket.recv(1024).decode()
+                message, num_clients = data.split('|')
                 self.message_textedit.append(message)
+                # Update the number of connected clients label
+                self.connected_clients_label.setText(f"Connected Clients: {num_clients}")
             except:
                 print("An error occurred!")
                 self.client_socket.close()
