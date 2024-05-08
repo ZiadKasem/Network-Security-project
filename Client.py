@@ -73,10 +73,8 @@ class ChatApp(QWidget):
 
 
             #sending the public key
-            public, private = ClientRSAObj.GenerateCommunicationKeys()
-            print(public)
-            print(f"Serialized_public {ClientRSAObj.SerializePublicKey(public)}")
-            self.client_socket.send(f"{ClientRSAObj.SerializePublicKey(public)}".encode('utf-8'))
+
+            self.client_socket.send(f"{self.username}".encode('utf-8'))
 
             self.message_textedit.append("Connected to server!")
             self.connect_button.setEnabled(False)
@@ -115,11 +113,11 @@ class ChatApp(QWidget):
                         if k != self.username:
                             Other_User_PublicKey = k
 
-                    print(ClientRSAObj.DeserializePublicKey(Other_User_PublicKey).decode())
+                    print(Other_User_PublicKey)
                 # Update the number of connected clients label
                 #self.connected_clients_label.setText(f"Connected Clients: {num_clients.split('%')[0]}")
-            except Exception as e:
-                print(f"An error occurred! {e}")
+            except:
+                print("An error occurred!")
                 self.client_socket.close()
                 break
 
