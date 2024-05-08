@@ -55,17 +55,45 @@ class ChatApp(QWidget):
         global blockCipherSelected, encryptionSelected
         self.username = self.username_entry.text()
         if self.username:
-            file_path = f"path/to/your/{self.username}.txt"
+            directory = f"{self.username}"
+
+            # Specify the file name you want to check for
+            file_name = f"{self.username}.txt"
+
+            # Concatenate the directory path and file name
+            file_path = os.path.join(directory, file_name)
 
             if os.path.exists(file_path):
                 print("User exists!")
 
             else:
+
                 MyRSA = RSA()
+                MyKeyManager = KeyManager()
                 myPublicKey, myPrivateKey = MyRSA.GenerateCommunicationKeys()
-                with open(file_path, 'a') as f:
-                    f.write("Initial content")  # You can write initial content if needed
-                print("File created!")
+                print("\nPublic Key before encryption:")
+                print(MyRSA.SerializePublicKey(myPublicKey).decode())
+                print("\nPrivate Key before encryption:")
+                print(MyRSA.SerializePrivKey(myPrivateKey).decode())
+                encrypted_public = MyKeyManager.encrypt_key(myPublicKey)
+                encrypted_private = MyKeyManager.encrypt_key(myPrivateKey)
+                print("\nPrivate Key after encryption:")
+                print(encrypted_public.decode())
+
+
+                os.makedirs(directory)
+                if os.path.exists(directory):
+                    print("hennnnnnnnnnna")
+                    MyKeyManager.storeEncryptedKeys(file_path,encrypted_public, encrypted_private)
+                    print("lolllllllllllllllllll")
+                    read_encrypted_public, read_encrypted_private = MyKeyManager.readEncryptedKeys(file_path)
+
+                    decrypted_key_public = MyKeyManager.decrypt_key(read_encrypted_public)
+                    decrypted_key_private = MyKeyManager.decrypt_key(read_encrypted_private)
+
+                    MyKeyManager.checkAfterDecryption(decrypted_key_public, decrypted_key_private)
+                    # You can write initial content if needed
+                    print("User Registered!")
             self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.client_socket.connect(("127.0.0.1", 5555))
 
@@ -89,8 +117,6 @@ class ChatApp(QWidget):
             #     self.Generating_RSA_Key()
             # else:
             #     pass
-
-
 
             receive_thread = threading.Thread(target=self.receive_message)
             receive_thread.start()
