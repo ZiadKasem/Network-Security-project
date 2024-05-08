@@ -7,13 +7,13 @@ from RSA import *
 from Hashing import *
 import os
 from KeyManager import *
-
+import ast
 blockCipherSelected = None
 encryptionSelected = None
 MyID = None
 
 Other_User_PublicKey = None
-
+ClientRSAObj = RSA()
 class ChatApp(QWidget):
     def __init__(self):
         super().__init__()
@@ -71,8 +71,12 @@ class ChatApp(QWidget):
             MyID = PreConfig.split(":")[2]
             print(f"{blockCipherSelected}, {encryptionSelected}")
 
+
             #sending the public key
-            self.client_socket.send(f"{self.username}".encode('utf-8'))
+            public, private = ClientRSAObj.GenerateCommunicationKeys()
+            print(public)
+            print(f"Serialized_public {ClientRSAObj.SerializePublicKey(public)}")
+            self.client_socket.send(f"{ClientRSAObj.SerializePublicKey(public)}".encode('utf-8'))
 
             self.message_textedit.append("Connected to server!")
             self.connect_button.setEnabled(False)
@@ -88,7 +92,7 @@ class ChatApp(QWidget):
         message = self.message_entry.text()
         if message:
             if self.username:
-                full_message = f"{self.username}: {message}"
+                full_message = f"{self.username}:{message}"
                 self.message_textedit.append(full_message)
                 self.client_socket.send(full_message.encode())
                 self.message_entry.clear()
@@ -102,19 +106,20 @@ class ChatApp(QWidget):
         while True:
             try:
                 data = self.client_socket.recv(1024).decode()
-                print(f"This iss the message {data}")
-                message, num_clients= data.split('|')
-                print(f"message.split(':')[0] is {message.split(':')[0]}  and self.username is {self.username}")
-                #message formate is user:message  |  numberOfUsers%publicKey
-                if (message.split(":")[0] != self.username and num_clients.split("%")[1] != self.username):#to be changed to public key
-                    print(f"Entered")
-                    self.message_textedit.append(message)
-                    Other_User_PublicKey = num_clients.split("%")[1]
-                    print(f"other user public key {Other_User_PublicKey}")
+                print(f"This is the message {data}")
+                listOfPublicKeys = data.split('|')[0]
+                number_of_users = int(data.split('|')[1].split('%')[0])
+                if number_of_users == 2:
+                    listOfPublicKeys = ast.literal_eval(listOfPublicKeys)
+                    for k in listOfPublicKeys:
+                        if k != self.username:
+                            Other_User_PublicKey = k
+
+                    print(ClientRSAObj.DeserializePublicKey(Other_User_PublicKey).decode())
                 # Update the number of connected clients label
-                self.connected_clients_label.setText(f"Connected Clients: {num_clients.split('%')[0]}")
-            except:
-                print("An error occurred!")
+                #self.connected_clients_label.setText(f"Connected Clients: {num_clients.split('%')[0]}")
+            except Exception as e:
+                print(f"An error occurred! {e}")
                 self.client_socket.close()
                 break
 

@@ -33,7 +33,7 @@ def handle_client(client_socket, client_address):
         Client_Public_key = client_socket.recv(1024).decode('utf-8')
         client_data.append(Client_Public_key)
 
-
+        broadcast(f"{client_data}", Client_Public_key)
         # Prompt client for username
         print(f"Username '{username}' connected from {client_address}")
 
@@ -41,7 +41,7 @@ def handle_client(client_socket, client_address):
         update_connected_clients(f"{username} - {client_address}")
 
         # Broadcast an update message to all clients
-        broadcast(f"New client connected: {username}",Client_Public_key)
+
 
         while not stop_server_event.is_set():
             # Receive message from client
@@ -67,12 +67,7 @@ def broadcast(message, PublicKey):
     num_clients = len(clients)
     for client in clients:
         try:
-            print(f"i am client {PublicKey}: now printing public keys list {client_data}")
-            # Send message along with the number of connected clients
-            for publicKey in client_data:
-                if(publicKey != PublicKey):
-                    print(f"inside Public key {publicKey},data {PublicKey}")
-                    client.send(f"{message}|{num_clients}%{str(publicKey)}".encode('utf-8'))
+            client.send(f"{message}|{num_clients}%{str(PublicKey)}".encode('utf-8'))
         except:
             clients.remove(client)
 
