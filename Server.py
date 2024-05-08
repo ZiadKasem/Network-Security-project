@@ -15,7 +15,7 @@ connected_clients = 0
 # Event to signal the server to stop
 stop_server_event = threading.Event()
 
-# Modify the handle_client function to send an update message when a new client connects
+
 # Modify the handle_client function to send an update message when a new client connects
 def handle_client(client_socket, client_address):
     global blockCipherSelected, encryptionSelected, connected_clients

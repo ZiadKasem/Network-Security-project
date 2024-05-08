@@ -3,6 +3,8 @@ from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QHBoxLayout, QTe
 from PyQt5.QtCore import Qt
 import socket
 import threading
+from RSA import *
+from Hashing import *
 
 blockCipherSelected = None
 encryptionSelected = None
@@ -68,6 +70,16 @@ class ChatApp(QWidget):
             self.connect_button.setEnabled(False)
             self.username_entry.setEnabled(False)
 
+
+            # Check if i am using encryptionSelected RSA or ECC
+            if(encryptionSelected.strip() == "RSA"):
+
+                self.Generating_RSA_Key()
+            else:
+                pass
+
+
+
             receive_thread = threading.Thread(target=self.receive_message)
             receive_thread.start()
         else:
@@ -98,6 +110,21 @@ class ChatApp(QWidget):
                 print("An error occurred!")
                 self.client_socket.close()
                 break
+
+    def Generating_RSA_Key(self):
+        """
+        pseudocode
+
+        """
+        print("Entering Generating_RSA_Key")
+        RSAEncryption = RSA()
+        HashingObj = SHA_256()
+        RSA_user1_public_key, RSA_user1_private_key = RSAEncryption.GenerateCommunicationKeys()
+        RSA_user1_private_key_serialized = RSAEncryption.SerializePrivKey(RSA_user1_private_key)
+        RSA_user1_private_key_Hashed = HashingObj.hash_data(RSA_user1_private_key_serialized)
+        with open(f'{self.username}.txt', 'w') as userKeyFile:
+            userKeyFile.write(str(RSA_user1_private_key_Hashed))
+        
 
 
 def main():
