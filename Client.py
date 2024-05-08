@@ -5,7 +5,8 @@ import socket
 import threading
 from RSA import *
 from Hashing import *
-
+import os
+from KeyManager import *
 blockCipherSelected = None
 encryptionSelected = None
 MyID = None
@@ -54,6 +55,17 @@ class ChatApp(QWidget):
         global blockCipherSelected, encryptionSelected
         self.username = self.username_entry.text()
         if self.username:
+            file_path = f"path/to/your/{self.username}.txt"
+
+            if os.path.exists(file_path):
+                print("User exists!")
+
+            else:
+                MyRSA = RSA()
+                myPublicKey, myPrivateKey = MyRSA.GenerateCommunicationKeys()
+                with open(file_path, 'a') as f:
+                    f.write("Initial content")  # You can write initial content if needed
+                print("File created!")
             self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.client_socket.connect(("127.0.0.1", 5555))
 
@@ -72,11 +84,11 @@ class ChatApp(QWidget):
 
 
             # Check if i am using encryptionSelected RSA or ECC
-            if(encryptionSelected.strip() == "RSA"):
-
-                self.Generating_RSA_Key()
-            else:
-                pass
+            # if(encryptionSelected.strip() == "RSA"):
+            #
+            #     self.Generating_RSA_Key()
+            # else:
+            #     pass
 
 
 
@@ -118,12 +130,13 @@ class ChatApp(QWidget):
         """
         print("Entering Generating_RSA_Key")
         RSAEncryption = RSA()
-        HashingObj = SHA_256()
+        #HashingObj = SHA_256()
         RSA_user1_public_key, RSA_user1_private_key = RSAEncryption.GenerateCommunicationKeys()
         RSA_user1_private_key_serialized = RSAEncryption.SerializePrivKey(RSA_user1_private_key)
-        RSA_user1_private_key_Hashed = HashingObj.hash_data(RSA_user1_private_key_serialized)
-        with open(f'{self.username}.txt', 'w') as userKeyFile:
-            userKeyFile.write(str(RSA_user1_private_key_Hashed))
+        #RSA_user1_private_key_Hashed = HashingObj.hash_data(RSA_user1_private_key_serialized)
+        # with open(f'{self.username}.txt', 'w') as userKeyFile:
+        #     userKeyFile.write(str(RSA_user1_private_key_Hashed))
+        return RSA_user1_public_key, RSA_user1_private_key
         
 
 
