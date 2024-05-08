@@ -7,9 +7,12 @@ from RSA import *
 from Hashing import *
 import os
 from KeyManager import *
+
 blockCipherSelected = None
 encryptionSelected = None
 MyID = None
+
+Other_User_PublicKey = None
 
 class ChatApp(QWidget):
     def __init__(self):
@@ -55,19 +58,9 @@ class ChatApp(QWidget):
         global blockCipherSelected, encryptionSelected
         self.username = self.username_entry.text()
         if self.username:
-            file_path = f"path/to/your/{self.username}.txt"
 
-            if os.path.exists(file_path):
-                print("User exists!")
-
-            else:
-                MyRSA = RSA()
-                myPublicKey, myPrivateKey = MyRSA.GenerateCommunicationKeys()
-                with open(file_path, 'a') as f:
-                    f.write("Initial content")  # You can write initial content if needed
-                print("File created!")
             self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.client_socket.connect(("127.0.0.1", 5555))
+            self.client_socket.connect(("127.0.0.1", 5560))
 
             # Send username to server
             self.client_socket.send(self.username.encode())
@@ -78,18 +71,12 @@ class ChatApp(QWidget):
             MyID = PreConfig.split(":")[2]
             print(f"{blockCipherSelected}, {encryptionSelected}")
 
+            #sending the public key
+            self.client_socket.send(f"{self.username}".encode('utf-8'))
+
             self.message_textedit.append("Connected to server!")
             self.connect_button.setEnabled(False)
             self.username_entry.setEnabled(False)
-
-
-            # Check if i am using encryptionSelected RSA or ECC
-            # if(encryptionSelected.strip() == "RSA"):
-            #
-            #     self.Generating_RSA_Key()
-            # else:
-            #     pass
-
 
 
             receive_thread = threading.Thread(target=self.receive_message)
@@ -111,13 +98,21 @@ class ChatApp(QWidget):
             self.message_textedit.append("Please enter a message.")
 
     def receive_message(self):
+        global Other_User_PublicKey
         while True:
             try:
                 data = self.client_socket.recv(1024).decode()
-                message, num_clients = data.split('|')
-                self.message_textedit.append(message)
+                print(f"This iss the message {data}")
+                message, num_clients= data.split('|')
+                print(f"message.split(':')[0] is {message.split(':')[0]}  and self.username is {self.username}")
+                #message formate is user:message  |  numberOfUsers%publicKey
+                if (message.split(":")[0] != self.username and num_clients.split("%")[1] != self.username):#to be changed to public key
+                    print(f"Entered")
+                    self.message_textedit.append(message)
+                    Other_User_PublicKey = num_clients.split("%")[1]
+                    print(f"other user public key {Other_User_PublicKey}")
                 # Update the number of connected clients label
-                self.connected_clients_label.setText(f"Connected Clients: {num_clients}")
+                self.connected_clients_label.setText(f"Connected Clients: {num_clients.split('%')[0]}")
             except:
                 print("An error occurred!")
                 self.client_socket.close()
@@ -130,14 +125,13 @@ class ChatApp(QWidget):
         """
         print("Entering Generating_RSA_Key")
         RSAEncryption = RSA()
-        #HashingObj = SHA_256()
+        # HashingObj = SHA_256()
         RSA_user1_public_key, RSA_user1_private_key = RSAEncryption.GenerateCommunicationKeys()
         RSA_user1_private_key_serialized = RSAEncryption.SerializePrivKey(RSA_user1_private_key)
-        #RSA_user1_private_key_Hashed = HashingObj.hash_data(RSA_user1_private_key_serialized)
+        # RSA_user1_private_key_Hashed = HashingObj.hash_data(RSA_user1_private_key_serialized)
         # with open(f'{self.username}.txt', 'w') as userKeyFile:
         #     userKeyFile.write(str(RSA_user1_private_key_Hashed))
         return RSA_user1_public_key, RSA_user1_private_key
-        
 
 
 def main():

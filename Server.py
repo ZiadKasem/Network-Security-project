@@ -15,16 +15,24 @@ connected_clients = 0
 # Event to signal the server to stop
 stop_server_event = threading.Event()
 
+# Data storage for each client
+client_data = []
+
 
 # Modify the handle_client function to send an update message when a new client connects
 def handle_client(client_socket, client_address):
-    global blockCipherSelected, encryptionSelected, connected_clients
+    global blockCipherSelected, encryptionSelected, connected_clients, client_data
 
     try:
         connected_clients += 1
         # Receive username from client
         username = client_socket.recv(1024).decode('utf-8')
         client_socket.send(f"{blockCipherSelected}:{encryptionSelected}:{connected_clients}".encode('utf-8'))
+
+        # Receive PublicKey from client
+        Client_Public_key = client_socket.recv(1024).decode('utf-8')
+        client_data.append(Client_Public_key)
+
 
         # Prompt client for username
         print(f"Username '{username}' connected from {client_address}")
@@ -33,7 +41,7 @@ def handle_client(client_socket, client_address):
         update_connected_clients(f"{username} - {client_address}")
 
         # Broadcast an update message to all clients
-        broadcast(f"New client connected: {username}", client_socket)
+        broadcast(f"New client connected: {username}",Client_Public_key)
 
         while not stop_server_event.is_set():
             # Receive message from client
@@ -43,7 +51,7 @@ def handle_client(client_socket, client_address):
                 break
 
             # Broadcast message to all clients
-            broadcast(message, client_socket)
+            broadcast(message,Client_Public_key)
 
     except Exception as e:
         print(f"Error: {e}")
@@ -54,13 +62,17 @@ def handle_client(client_socket, client_address):
     client_socket.close()
 
 # Function to broadcast messages to all clients including the number of connected clients
-def broadcast(message, clientSocket):
+def broadcast(message, PublicKey):
+    global client_data
     num_clients = len(clients)
     for client in clients:
         try:
-
+            print(f"i am client {PublicKey}: now printing public keys list {client_data}")
             # Send message along with the number of connected clients
-            client.send(f"{message}|{num_clients}".encode('utf-8'))
+            for publicKey in client_data:
+                if(publicKey != PublicKey):
+                    print(f"inside Public key {publicKey},data {PublicKey}")
+                    client.send(f"{message}|{num_clients}%{str(publicKey)}".encode('utf-8'))
         except:
             clients.remove(client)
 
@@ -74,7 +86,7 @@ def update_connected_clients(client_info):
 def main():
     global blockCipherSelected, encryptionSelected
     host = '127.0.0.1'
-    port = 5555
+    port = 5560
 
     # Create server socket
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

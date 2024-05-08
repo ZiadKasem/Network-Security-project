@@ -54,7 +54,7 @@ class RSA:
             backend=default_backend()
         )
 
-        # Decrypt the data
+        # Decrypt the PublicKey
         decrypted_data = loaded_private_key.decrypt(
             ciphertext,
             padding.OAEP(
