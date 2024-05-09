@@ -22,23 +22,20 @@ def PublicKeyExechange(decoded_client_public_key):
     for client in clients:
         try:
             client.send("PK".encode())
-            print("PK is sended")
+
             ack = client.recv(1024).decode('utf-8')
-            print(f"printing ack {ack}")
+
             if ack == "ACK":
-                print("inside ACK")
+
                 if len(clients) > 1:
-                    print("instde if len > 1")
+
                     myIndex = clients.index(client)
-                    print(myIndex)
-                    print(type(myIndex))
+
                     if myIndex == 0:
-                        print("in first if")
-                        print(client_data[1].encode("utf-8"))
+
                         client.send(client_data[1].encode("utf-8"))
                     else:
-                        print("in second if")
-                        print(client_data[0].encode("utf-8"))
+
                         client.send(client_data[0].encode("utf-8"))
                 else:
                     client.send(decoded_client_public_key.encode("utf-8"))
@@ -58,12 +55,12 @@ def handle_client(client_socket, client_address):
         username = client_socket.recv(1024).decode('utf-8')
         client_socket.send(f"{blockCipherSelected}:{encryptionSelected}:{connected_clients}".encode('utf-8'))
         try:
-            print("enter try")
+
             # Receive PublicKey from client
             Client_Public_key = client_socket.recv(1024)
-            print(Client_Public_key)
+
             client_data.append(Client_Public_key.decode("utf-8"))
-            print(client_data)
+
             PublicKeyExechange(Client_Public_key.decode("utf-8"))
         except Exception as e:
             print(f"the receive exception error : {e}")
@@ -82,12 +79,10 @@ def handle_client(client_socket, client_address):
 
             try:
                 message = client_socket.recv(1024)
-                print("Full message  ", message)
+
             except Exception as e:
                 print("Error da ", e)
-            #msgList = message.split('::::')
-            #msg = msgList[0]
-            #print(f"my message {msg}")
+
             if not message:
                 print(f"Connection with {client_address} closed.")
                 break

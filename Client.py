@@ -56,11 +56,11 @@ class ChatApp(QWidget):
             # Send username to server
             self.client_socket.send(self.username.encode())
             PreConfig = self.client_socket.recv(1024).decode()
-            print(PreConfig)
+
             blockCipherSelected = PreConfig.split(":")[0]
             encryptionSelected = PreConfig.split(":")[1]
             MyID = PreConfig.split(":")[2]
-            print(f"{blockCipherSelected}, {encryptionSelected}")
+
             try:
                 # sending the public key
                 public, private = ClientRSAObj.GenerateCommunicationKeys()
@@ -68,7 +68,7 @@ class ChatApp(QWidget):
                 varxDecoded = varX.decode("utf-8")
 
                 self.client_socket.send(varX)
-                print("Public Key message sent\n")
+
             except Exception as e:
                 print(f"client exception {e}")
 
@@ -91,33 +91,25 @@ class ChatApp(QWidget):
 
                 if Other_User_PublicKey:
                     encrypted_symmetric_key = ClientRSAObj.RSAEncrypt(client_symmetric_key, Other_User_PublicKey)
-                    #if blockCipherSelected == "AES":
+
                     full_message = f"{self.username}:{message}::::{encrypted_symmetric_key}"
                     plaintext = full_message.split("::::")[0]
                     print("\nplaintext ", plaintext)
                     encrypted_plaintext, tag, nonce = ClientBlockCipherObj.encrypt_AES_EAX(plaintext.encode("utf-8"), client_symmetric_key)
                     print(full_message)
-                    print("jared ",encrypted_plaintext)
-                    print("\ntag ",tag)
-                    print("\nnonce ", nonce)
+                    print("encrypted_plaintext ",encrypted_plaintext)
                     print("\nencrypted symmetric key ", encrypted_symmetric_key)
 
-                    #self.client_socket.send(f"AES::::{encrypted_plaintext.decode('utf-8')}::::{tag.decode('utf-8')}::::{nonce.decode('utf-8')}::::{encrypted_symmetric_key}")
 
-                    #print(f"AES::::{encrypted_plaintext.decode('utf-8')}::::{tag.decode('utf-8')}::::{nonce.decode('utf-8')}::::{encrypted_symmetric_key}")
-                    #encrypted_message = "AES::::" + encrypted_plaintext.decode("utf-8") + "::::" + tag.decode("utf-8") + "::::" + nonce.decode("utf-8") + "::::" + encrypted_symmetric_key.decode("utf-8")
-                    print("bos hena\n")
-                    #print(encrypted_plaintext.decode("utf-8"))
-                    #print("\nciphertext: ", encrypted_plaintext)
                     allVals = [encrypted_plaintext, tag, nonce, encrypted_symmetric_key]
                     data_bytes = b'::::'.join(allVals)
                     self.client_socket.sendall(data_bytes)
 
                 else:
                     full_message = f"{self.username}:{message}::::null"
-                    print(full_message)
+
                 self.message_textedit.append(full_message.split("::::")[0])
-                #self.client_socket.send(full_message.encode())
+
 
                 self.message_entry.clear()
             else:
@@ -133,22 +125,20 @@ class ChatApp(QWidget):
         global  varxDecoded, private
         while True:
             try:
-                print("weselt gowa\n")
                 data = self.client_socket.recv(1024).decode("utf-8")
-                print(f"data is received {data}")
+
                 if data == "PK":
                     self.client_socket.send("ACK".encode("utf-8"))
                 if data == "PK":
                     content = self.client_socket.recv(1024)
-                    print(f"content.decode {content.decode('utf-8')} and varxDecoded: {varxDecoded} ")
+
                     if content.decode("utf-8") != varxDecoded:
                         Other_User_PublicKey = content
                         print("Now I have other user key ",Other_User_PublicKey)
                     else:
-                        print("Mafeesh 7d lessa\n")
+                        print("The Other User is Offline \n")
                 elif data == "Normal":
                     content = self.client_socket.recv(1024)
-                    print(content.split(b'::::'))
                     myMsg = content.split(b'::::')
                     receivedEncryptedPlaintext =  myMsg[0]
                     receivedTag = myMsg[1]
@@ -158,7 +148,7 @@ class ChatApp(QWidget):
                     receivedSymmetricKey  = ClientRSAObj.RSADecrypt(receivedEncryptedSymmetricKey, ClientRSAObj.SerializePrivKey(private))
                     decryptedReceivedPlaintext = ClientBlockCipherObj.decrypt_AES_EAX(receivedEncryptedPlaintext,
                                                                                       receivedSymmetricKey,receivedNonce, receivedTag)
-                    print(decryptedReceivedPlaintext.decode("utf-8"))
+                    print(f"decrypted Received Plaintext: {decryptedReceivedPlaintext.decode('utf-8')}")
 
                     self.message_textedit.append(decryptedReceivedPlaintext.decode("utf-8"))
 
