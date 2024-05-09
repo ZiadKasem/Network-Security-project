@@ -3,72 +3,114 @@ import threading
 from queue import Queue
 from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel, QComboBox, QPushButton, QTextEdit
 
-
 # List to store connected clients
 clients = []
-
 # Global variables for block cipher and encryption method
 blockCipherSelected = "AES"
 encryptionSelected = "ECC"
 connected_clients = 0
-
 # Event to signal the server to stop
 stop_server_event = threading.Event()
-
 # Data storage for each client
 client_data = []
+PUBLICKEYEXECHANGED = 0
+
+
+def PublicKeyExechange(decoded_client_public_key):
+    global client_data, clients, PUBLICKEYEXECHANGED
+    print(f"printing clients {clients}")
+    for client in clients:
+        try:
+            client.send("PK".encode())
+            print("PK is sended")
+            ack = client.recv(1024).decode('utf-8')
+            print(f"printing ack {ack}")
+            if ack == "ACK":
+                print("inside ACK")
+                if len(clients) > 1:
+                    print("instde if len > 1")
+                    myIndex = clients.index(client)
+                    print(myIndex)
+                    print(type(myIndex))
+                    if myIndex == 0:
+                        print("in first if")
+                        print(client_data[1].encode("utf-8"))
+                        client.send(client_data[1].encode("utf-8"))
+                    else:
+                        print("in second if")
+                        print(client_data[0].encode("utf-8"))
+                        client.send(client_data[0].encode("utf-8"))
+                else:
+                    client.send(decoded_client_public_key.encode("utf-8"))
+        except Exception as e:
+            print(f"BCast Error{e}")
+            clients.remove(client)
+    if len(clients) == 2:
+        PUBLICKEYEXECHANGED = 1
 
 
 # Modify the handle_client function to send an update message when a new client connects
 def handle_client(client_socket, client_address):
-    global blockCipherSelected, encryptionSelected, connected_clients, client_data
-
+    global blockCipherSelected, encryptionSelected, connected_clients, client_data, PUBLICKEYEXECHANGED
     try:
         connected_clients += 1
         # Receive username from client
         username = client_socket.recv(1024).decode('utf-8')
         client_socket.send(f"{blockCipherSelected}:{encryptionSelected}:{connected_clients}".encode('utf-8'))
+        try:
+            print("enter try")
+            # Receive PublicKey from client
+            Client_Public_key = client_socket.recv(1024)
+            print(Client_Public_key)
+            client_data.append(Client_Public_key.decode("utf-8"))
+            print(client_data)
+            PublicKeyExechange(Client_Public_key.decode("utf-8"))
+        except Exception as e:
+            print(f"the receive exception error : {e}")
 
-        # Receive PublicKey from client
-        Client_Public_key = client_socket.recv(1024).decode('utf-8')
-        client_data.append(Client_Public_key)
-
-        broadcast(f"{client_data}", Client_Public_key)
         # Prompt client for username
         print(f"Username '{username}' connected from {client_address}")
-
         # Add client address to connected clients list
         update_connected_clients(f"{username} - {client_address}")
-
         # Broadcast an update message to all clients
-
 
         while not stop_server_event.is_set():
             # Receive message from client
-            message = client_socket.recv(1024).decode('utf-8')
+            while (PUBLICKEYEXECHANGED != 1):
+                pass
+            print("client is waiting for message to be send")
+
+            try:
+                message = client_socket.recv(1024)
+                print("Full message  ", message)
+            except Exception as e:
+                print("Error da ", e)
+            #msgList = message.split('::::')
+            #msg = msgList[0]
+            #print(f"my message {msg}")
             if not message:
                 print(f"Connection with {client_address} closed.")
                 break
-
             # Broadcast message to all clients
-            broadcast(message,Client_Public_key)
-
+            broadcast(message, client_socket)
     except Exception as e:
         print(f"Error: {e}")
-
     # Remove client from the list of connected clients
     clients.remove(client_socket)
     connected_clients -= 1
     client_socket.close()
 
+
 # Function to broadcast messages to all clients including the number of connected clients
-def broadcast(message, PublicKey):
-    global client_data
-    num_clients = len(clients)
+def broadcast(message, client_socket):
     for client in clients:
         try:
-            client.send(f"{message}|{num_clients}%{str(PublicKey)}".encode('utf-8'))
-        except:
+            if client != client_socket:
+                client.send("Normal".encode())
+
+                client.sendall(message)
+        except Exception as e:
+            print(f"BCast Error{e}")
             clients.remove(client)
 
 
@@ -82,32 +124,24 @@ def main():
     global blockCipherSelected, encryptionSelected
     host = '127.0.0.1'
     port = 5560
-
     # Create server socket
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
     # Bind server socket to address
     server_socket.bind((host, port))
-
     # Listen for incoming connections
     server_socket.listen()
-
     print("Server listening on port:", port)
-
     while not stop_server_event.is_set():
         if len(clients) < 2:  # Limit the number of clients to 2
             # Accept incoming connection
             client_socket, client_address = server_socket.accept()
-
             # Add client to list of connected clients
             clients.append(client_socket)
-
             # Start a new thread to handle client
             client_thread = threading.Thread(target=handle_client, args=(client_socket, client_address))
             client_thread.start()
         else:
             pass
-
     # Close the server socket when the server stops
     server_socket.close()
 
@@ -128,12 +162,10 @@ class ServerConfigWindow(QWidget):
         self.block_cipher_combo = QComboBox()
         self.block_cipher_combo.addItems(["AES", "DES"])
         self.block_cipher_combo.currentIndexChanged.connect(self.block_cipher_changed)
-
         self.crypto_system_label = QLabel("Crypto System Algorithm:")
         self.crypto_system_combo = QComboBox()
         self.crypto_system_combo.addItems(["ECC", "RSA"])
         self.crypto_system_combo.currentIndexChanged.connect(self.encryption_method_changed)
-
         self.layout.addWidget(self.block_cipher_label)
         self.layout.addWidget(self.block_cipher_combo)
         self.layout.addWidget(self.crypto_system_label)
