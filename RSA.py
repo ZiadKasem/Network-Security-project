@@ -31,6 +31,15 @@ class RSA:
         )
         return PrivKeyPemSerialized
 
+    def DeserializePublicKey(self, publicKeyPemSerialized):
+        if isinstance(publicKeyPemSerialized, str):
+            publicKeyPemSerialized = publicKeyPemSerialized.encode('utf-8')
+
+        publicKey = serialization.load_pem_public_key(
+            publicKeyPemSerialized,
+            backend=default_backend()
+        )
+        return publicKey
     def RSAEncrypt(self,plaintext, serializedPublicKey):
         publicKey = serialization.load_pem_public_key(
             serializedPublicKey,
@@ -54,7 +63,7 @@ class RSA:
             backend=default_backend()
         )
 
-        # Decrypt the data
+        # Decrypt the PublicKey
         decrypted_data = loaded_private_key.decrypt(
             ciphertext,
             padding.OAEP(
